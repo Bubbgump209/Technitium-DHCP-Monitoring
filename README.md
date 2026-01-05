@@ -25,13 +25,15 @@ Excluded addresses: 129
   • 10.10.10.1-10.10.10.25 (25 addresses)
   • 10.10.10.151-10.10.10.254 (104 addresses)
 
-Reserved addresses: 0
-Active pool size: 125
+Reserved addresses: 23
+Active pool size: 102
 
 --- Usage Statistics ---
-Active dynamic leases: 92
-Available addresses: 33
-Pool utilization: 73.60%
+Active dynamic leases: 88
+Available addresses: 14
+Pool utilization: 86.27%
+
+⚠️  NOTICE: Pool usage is elevated
 ```
 
 ### Output Notes
@@ -45,6 +47,7 @@ Pool utilization: 73.60%
 ```
 
 * When `--json` is used, the same data is returned in structured JSON format
+* Elevated status is anything over 75%. Critical is usage over 90%.
 
 
 
