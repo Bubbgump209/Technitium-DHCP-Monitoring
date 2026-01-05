@@ -1,0 +1,156 @@
+Here’s a clean, GitHub-friendly **README.md** formatted in Markdown. I’ve tightened wording slightly, fixed typos, and organized it the way most repos expect, without changing meaning or tone.
+
+---
+
+# Technitium DHCP Pool Monitor
+
+This repository contains two Bash scripts to assist in monitoring **Technitium DHCP lease pool utilization**.
+
+As of **Technitium DNS Server 14.3**, there is no built-in or easy way to determine when DHCP scopes are running low on available leases. These scripts are intended to solve that gap.
+
+Both scripts are written entirely in **Bash** and have minimal dependencies.
+
+## Requirements
+
+* `bash`
+* `curl`
+* `jq`
+
+---
+
+## Scripts Included
+
+* **`DHCPPoolMonitor.sh`**
+  General-purpose CLI tool for querying DHCP pool usage and statistics.
+
+* **`DHCPPoolMonitorZabbixWrapper.sh`**
+  Wrapper script designed to return a *single numeric value* suitable for Zabbix monitoring.
+
+---
+
+## DHCPPoolMonitor.sh
+
+### Basic Usage
+
+```bash
+./DHCPPoolMonitor.sh --server <URL> --token <TOKEN> [OPTIONS]
+```
+
+### Required Arguments
+
+| Argument          | Description                                                                   |
+| ----------------- | ----------------------------------------------------------------------------- |
+| `--server <URL>`  | Technitium server URL (e.g. `http://192.168.1.1:5380`, `https://192.168.1.1`) |
+| `--token <TOKEN>` | API authentication token                                                      |
+
+### Optional Arguments
+
+| Argument         | Description                                                 |
+| ---------------- | ----------------------------------------------------------- |
+| `--scope <name>` | Query a specific DHCP scope (queries all scopes if omitted) |
+| `--json`         | Output results in JSON format                               |
+| `--verbose`      | Enable verbose/debug output                                 |
+| `--insecure`     | Allow insecure SSL connections (self-signed certificates)   |
+| `-h`, `--help`   | Show help message                                           |
+
+### Examples
+
+```bash
+./DHCPPoolMonitor.sh --server http://192.168.1.1:5380 --token mytoken123
+```
+
+```bash
+./DHCPPoolMonitor.sh --server http://192.168.1.1:5380 --token mytoken123 --scope "Main Network"
+```
+
+```bash
+./DHCPPoolMonitor.sh --server https://10.10.10.5 --token mytoken --insecure
+```
+
+```bash
+./DHCPPoolMonitor.sh --server http://10.10.10.5:5380 --token mytoken --verbose
+```
+
+### Notes
+
+* Default Technitium port is **5380**
+* Use:
+
+  * `http://` for non-SSL
+  * `https://` for SSL
+  * `https://` + `--insecure` for self-signed certificates
+* API tokens can be created in:
+  **Technitium DNS Server Administration → Sessions → Create Token**
+
+---
+
+## Zabbix Wrapper
+
+The Zabbix wrapper is intended to be used as an **external check** or **user parameter**, returning a single numeric value.
+
+### Usage
+
+```bash
+./DHCPPoolMonitorZabbixWrapper.sh <server> <token> <scope> <metric> [insecure]
+```
+
+### Parameters
+
+| Parameter  | Description                                          |
+| ---------- | ---------------------------------------------------- |
+| `server`   | Technitium server URL (e.g. `https://10.10.10.5`)    |
+| `token`    | API authentication token                             |
+| `scope`    | DHCP scope name (e.g. `LAN`, `Guest`, `Chromebooks`) |
+| `metric`   | Metric to retrieve (see below)                       |
+| `insecure` | Optional: use for self-signed SSL certificates       |
+
+### Available Metrics
+
+| Metric                | Description                         |
+| --------------------- | ----------------------------------- |
+| `usage_percent`       | Pool utilization percentage (0–100) |
+| `active_leases`       | Number of active dynamic leases     |
+| `available_addresses` | Available addresses in the pool     |
+| `active_pool_size`    | Total usable pool size              |
+| `total_range`         | Total addresses in the scope range  |
+| `excluded_addresses`  | Number of excluded addresses        |
+| `reserved_addresses`  | Number of reserved addresses        |
+
+### Examples
+
+```bash
+# Get pool usage percentage
+./DHCPPoolMonitorZabbixWrapper.sh https://10.10.10.5 mytoken123 mylan usage_percent insecure
+```
+
+```bash
+# Get active lease count
+./DHCPPoolMonitorZabbixWrapper.sh https://10.10.10.5 mytoken123 mylan active_leases insecure
+```
+
+```bash
+# Get available addresses (HTTP, no SSL)
+./DHCPPoolMonitorZabbixWrapper.sh http://10.10.10.5:5380 mytoken123 mylan available_addresses
+```
+
+### Zabbix Item Key Format
+
+```text
+DHCPPoolMonitorZabbixWrapper.sh[https://10.10.10.5,{},LAN,usage_percent,insecure]
+```
+
+### Zabbix Notes
+
+* Returns a **single numeric value** suitable for Zabbix
+* Returns **0** on error or if no data is available
+* Requires `jq`
+* **`DHCPPoolMonitor.sh` must be in the same directory**
+
+---
+
+If you want, I can also:
+
+* Add a **sample Zabbix template**
+* Add **screenshots / output examples**
+* Tighten this further to match a public GitHub repo style
+* Add **installation instructions** or **systemd/cron examples**
