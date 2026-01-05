@@ -362,12 +362,32 @@ while IFS= read -r scope; do
         fi
     done <<< "$EXCLUSIONS"
     
-    # Count reservations (reservedLeases in API)
-    RESERVATIONS_COUNT=$(echo "$SCOPE_DETAILS" | jq '[.response.reservedLeases[]?] | length')
-    log_verbose "  Reservations: $RESERVATIONS_COUNT"
+    # Count reservations (reservedLeases in API) and check which are in excluded ranges
+    RESERVATIONS_COUNT=0
+    RESERVATIONS_IN_EXCLUDED=0
+    RESERVATIONS_OUTSIDE_EXCLUDED=0
+    RESERVED_LEASES=$(echo "$SCOPE_DETAILS" | jq -c '.response.reservedLeases[]?' 2>/dev/null)
     
-    # Calculate active pool size
-    ACTIVE_POOL=$((TOTAL_RANGE - EXCLUDED_COUNT - RESERVATIONS_COUNT))
+    while IFS= read -r reserved; do
+        if [[ -n "$reserved" ]]; then
+            RESERVATIONS_COUNT=$((RESERVATIONS_COUNT + 1))
+            RESERVED_IP=$(echo "$reserved" | jq -r '.address')
+            
+            # Check if this reservation is in an excluded range
+            if ip_in_excluded_range "$RESERVED_IP" "$EXCLUSION_RANGES"; then
+                RESERVATIONS_IN_EXCLUDED=$((RESERVATIONS_IN_EXCLUDED + 1))
+                log_verbose "  Reservation in excluded range: $RESERVED_IP"
+            else
+                RESERVATIONS_OUTSIDE_EXCLUDED=$((RESERVATIONS_OUTSIDE_EXCLUDED + 1))
+                log_verbose "  Reservation outside excluded ranges: $RESERVED_IP"
+            fi
+        fi
+    done <<< "$RESERVED_LEASES"
+    
+    log_verbose "  Total reservations: $RESERVATIONS_COUNT (In excluded: $RESERVATIONS_IN_EXCLUDED, Outside excluded: $RESERVATIONS_OUTSIDE_EXCLUDED)"
+    
+    # Calculate active pool size (subtract only reservations outside excluded ranges)
+    ACTIVE_POOL=$((TOTAL_RANGE - EXCLUDED_COUNT - RESERVATIONS_OUTSIDE_EXCLUDED))
     log_verbose "  Active pool: $ACTIVE_POOL addresses"
     
     # Get leases for this scope
@@ -428,7 +448,7 @@ while IFS= read -r scope; do
         else
             ENABLED_JSON="\"$ENABLED\""
         fi
-        RESULTS+=("{\"scope_name\":\"$scope\",\"subnet\":\"$NETWORK\",\"subnet_mask\":\"$SUBNET_MASK\",\"enabled\":$ENABLED_JSON,\"total_range\":$TOTAL_RANGE,\"excluded_addresses\":$EXCLUDED_COUNT,\"reserved_addresses\":$RESERVATIONS_COUNT,\"active_pool_size\":$ACTIVE_POOL,\"active_leases\":$ACTIVE_LEASES,\"available_addresses\":$AVAILABLE,\"usage_percent\":$USAGE_PERCENT,\"start_address\":\"$START_IP\",\"end_address\":\"$END_IP\"}")
+        RESULTS+=("{\"scope_name\":\"$scope\",\"subnet\":\"$NETWORK\",\"subnet_mask\":\"$SUBNET_MASK\",\"enabled\":$ENABLED_JSON,\"total_range\":$TOTAL_RANGE,\"excluded_addresses\":$EXCLUDED_COUNT,\"reserved_addresses\":$RESERVATIONS_COUNT,\"reservations_in_excluded\":$RESERVATIONS_IN_EXCLUDED,\"reservations_outside_excluded\":$RESERVATIONS_OUTSIDE_EXCLUDED,\"active_pool_size\":$ACTIVE_POOL,\"active_leases\":$ACTIVE_LEASES,\"available_addresses\":$AVAILABLE,\"usage_percent\":$USAGE_PERCENT,\"start_address\":\"$START_IP\",\"end_address\":\"$END_IP\"}")
     else
         # Human-readable output
         echo -e "\n======================================================================"
@@ -443,6 +463,10 @@ while IFS= read -r scope; do
             echo -e "$EXCLUSIONS_DETAIL"
         fi
         echo -e "Reserved addresses: $RESERVATIONS_COUNT"
+        if [[ $RESERVATIONS_COUNT -gt 0 ]]; then
+            echo -e "  • In excluded ranges: $RESERVATIONS_IN_EXCLUDED"
+            echo -e "  • Outside excluded ranges: $RESERVATIONS_OUTSIDE_EXCLUDED"
+        fi
         echo -e "Active pool size: ${GREEN}$ACTIVE_POOL${NC}"
         echo -e "\n--- Usage Statistics ---"
         echo -e "Active dynamic leases: $ACTIVE_LEASES"
