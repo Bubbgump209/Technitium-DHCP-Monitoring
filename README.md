@@ -154,3 +154,48 @@ If you want, I can also:
 * Add **screenshots / output examples**
 * Tighten this further to match a public GitHub repo style
 * Add **installation instructions** or **systemd/cron examples**
+* 
+
+Here’s a clean **README-ready section** you can drop under the `DHCPPoolMonitor.sh` documentation, typically after **Examples** or before **Notes**.
+
+---
+
+## Example Output
+
+```text
+Querying Technitium DHCP server at https://10.10.10.5...
+
+======================================================================
+SCOPE: LAN
+======================================================================
+Subnet: 10.10.10.0/255.255.255.0
+Range: 10.10.10.1 - 10.10.10.254
+
+--- Pool Calculation ---
+Total addresses in range: 254
+Excluded addresses: 129
+  • 10.10.10.1-10.10.10.25 (25 addresses)
+  • 10.10.10.151-10.10.10.254 (104 addresses)
+
+Reserved addresses: 0
+Active pool size: 125
+
+--- Usage Statistics ---
+Active dynamic leases: 92
+Available addresses: 33
+Pool utilization: 73.60%
+```
+
+### Output Notes
+
+* One section is displayed per DHCP scope
+* Excluded ranges are broken down individually
+* Pool utilization is calculated as:
+
+```
+(active dynamic leases / active pool size) * 100
+```
+
+* When `--json` is used, the same data is returned in structured JSON format
+
+
