@@ -49,7 +49,7 @@ Pool utilization: 72.00%
 ```
 
 * When `--json` is used, the same data is returned in structured JSON format
-* Elevated status is anything over 75%. Critical is usage over 90%.
+* By default elevated status is anything over 75%. Critical is usage over 90%.
 
 
 
