@@ -26,14 +26,16 @@ Excluded addresses: 129
   • 10.10.10.151-10.10.10.254 (104 addresses)
 
 Reserved addresses: 23
-Active pool size: 102
+  • In excluded ranges: 23
+  • Outside excluded ranges: 0
+Active pool size: 125
 
 --- Usage Statistics ---
-Active dynamic leases: 88
-Available addresses: 14
-Pool utilization: 86.27%
+Active dynamic leases: 90
+Available addresses: 35
+Pool utilization: 72.00%
 
-⚠️  NOTICE: Pool usage is elevated
+⚠️  NOTICE: Pool usage is elevated (≥70%)
 ```
 
 ### Output Notes
