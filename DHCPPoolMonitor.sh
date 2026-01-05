@@ -20,6 +20,8 @@ SCOPE_NAME=""
 JSON_OUTPUT=false
 VERBOSE=false
 INSECURE=false
+THRESHOLD_WARNING=75
+THRESHOLD_CRITICAL=90
 
 # Usage function
 usage() {
@@ -27,7 +29,7 @@ usage() {
 Usage: $0 --server <URL> --token <TOKEN> [OPTIONS]
 
 Required:
-    --server <URL>      Technitium server URL (e.g., http://192.168.1.1:5380)
+    --server <URL>      Technitium server URL (e.g., http://192.168.1.1:5380, https://192.168.1.1)
     --token <TOKEN>     API authentication token
 
 Optional:
@@ -35,18 +37,21 @@ Optional:
     --json              Output results in JSON format
     --verbose           Show detailed debugging information
     --insecure          Allow insecure SSL connections (self-signed certificates)
+    --warning <num>     Warning threshold percentage (default: 75)
+    --critical <num>    Critical threshold percentage (default: 90)
     -h, --help          Show this help message
 
 Examples:
     $0 --server http://192.168.1.1:5380 --token mytoken123
     $0 --server http://192.168.1.1:5380 --token mytoken123 --scope "Main Network"
-    $0 --server https://10.10.10.5:5380 --token mytoken --insecure
-    $0 --server http://10.10.10.5:5380 --token mytoken --verbose
+    $0 --server https://10.10.10.5 --token mytoken --insecure
+    $0 --server http://10.10.10.5 --token mytoken --verbose
+    $0 --server http://10.10.10.5:5380 --token mytoken --warning 80 --critical 95
 
 Notes:
     - Default port is 5380
-    - Use http:// for no SSL, or https:// with --insecure for self-signed certs
-    - Get your API token from Technitium DNS Server Settings → API → Tokens
+    - Use http:// for no SSL, https:// for SSL, or https:// with --insecure for self-signed certs
+    - Get your API token from Technitium DNS Server: Administration → Sessions → Create Token
 
 EOF
     exit 1
@@ -86,6 +91,14 @@ while [[ $# -gt 0 ]]; do
             INSECURE=true
             shift
             ;;
+        --warning)
+            THRESHOLD_WARNING="$2"
+            shift 2
+            ;;
+        --critical)
+            THRESHOLD_CRITICAL="$2"
+            shift 2
+            ;;
         -h|--help)
             usage
             ;;
@@ -107,6 +120,24 @@ SERVER_URL="${SERVER_URL%/}"
 
 log_verbose "Server URL: $SERVER_URL"
 log_verbose "API Token: ${API_TOKEN:0:10}..."
+log_verbose "Warning threshold: $THRESHOLD_WARNING%"
+log_verbose "Critical threshold: $THRESHOLD_CRITICAL%"
+
+# Validate thresholds
+if ! [[ "$THRESHOLD_WARNING" =~ ^[0-9]+$ ]] || [[ $THRESHOLD_WARNING -lt 0 ]] || [[ $THRESHOLD_WARNING -gt 100 ]]; then
+    echo -e "${RED}Error: Warning threshold must be between 0 and 100${NC}"
+    exit 1
+fi
+
+if ! [[ "$THRESHOLD_CRITICAL" =~ ^[0-9]+$ ]] || [[ $THRESHOLD_CRITICAL -lt 0 ]] || [[ $THRESHOLD_CRITICAL -gt 100 ]]; then
+    echo -e "${RED}Error: Critical threshold must be between 0 and 100${NC}"
+    exit 1
+fi
+
+if [[ $THRESHOLD_CRITICAL -le $THRESHOLD_WARNING ]]; then
+    echo -e "${RED}Error: Critical threshold must be greater than warning threshold${NC}"
+    exit 1
+fi
 
 # Check dependencies
 if ! command -v curl &> /dev/null; then
@@ -116,7 +147,7 @@ fi
 
 if ! command -v jq &> /dev/null; then
     echo -e "${RED}Error: jq is required but not installed${NC}"
-    echo "Install it with: brew install jq"
+    echo "Install it with: apt install jq, brew install jq, or equivalent"
     exit 1
 fi
 
@@ -474,12 +505,12 @@ while IFS= read -r scope; do
         
         # Color-code usage percentage
         USAGE_INT=${USAGE_PERCENT%.*}
-        if [[ $USAGE_INT -ge 90 ]]; then
+        if [[ $USAGE_INT -ge $THRESHOLD_CRITICAL ]]; then
             echo -e "Pool utilization: ${RED}${USAGE_PERCENT}%${NC}"
-            echo -e "\n${RED}⚠️  WARNING: Pool usage is critically high!${NC}"
-        elif [[ $USAGE_INT -ge 75 ]]; then
+            echo -e "\n${RED}⚠️  WARNING: Pool usage is critically high! (≥${THRESHOLD_CRITICAL}%)${NC}"
+        elif [[ $USAGE_INT -ge $THRESHOLD_WARNING ]]; then
             echo -e "Pool utilization: ${YELLOW}${USAGE_PERCENT}%${NC}"
-            echo -e "\n${YELLOW}⚠️  NOTICE: Pool usage is elevated${NC}"
+            echo -e "\n${YELLOW}⚠️  NOTICE: Pool usage is elevated (≥${THRESHOLD_WARNING}%)${NC}"
         else
             echo -e "Pool utilization: ${GREEN}${USAGE_PERCENT}%${NC}"
         fi
