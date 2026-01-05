@@ -93,6 +93,8 @@ Pool utilization: 86.27%
 | `--json`         | Output results in JSON format                               |
 | `--verbose`      | Enable verbose/debug output                                 |
 | `--insecure`     | Allow insecure SSL connections (self-signed certificates)   |
+| `--warning <num>` | Warning threshold percentage (default: 75)                  |
+| `--critical <num>` | Critical threshold percentage (default: 90)                |
 | `-h`, `--help`   | Show help message                                           |
 
 ### Examples
